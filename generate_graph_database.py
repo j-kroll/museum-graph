@@ -3,17 +3,15 @@ import os
 
 def get_contributor_ids(item):
     contributors = item['contributors']
-    artist_ids = [i['id'] for i in contributors if i['role'] == 'artist'] # TODO handle non-artist contributors
+    artist_ids = [i['id'] for i in contributors if i['role'] == 'artist']
     artist_ids_str = ''
     for a_id in artist_ids:
         artist_ids_str += 'MATCH (a:Artwork), (b:Artist) WHERE a.id = {} AND b.id = {} CREATE (a)-[r:CREATED_BY]->(b);\n'.format(item['id'], a_id)
-        # artist_ids_str += 'CREATE (artwork_{}:Artwork)-[r:CREATED_BY]->(artist_{}:Artist);\n'.format(item['id'], a_id)
     return artist_ids_str
 
-# TODO: catalogueGroup, contributors, dateRange
 artwork_fields = [
     'acno',
-    'acquisitionYear', # TODO cast years to date
+    'acquisitionYear',
     'all_artists',
     'classification',
     'contributorCount',
@@ -37,12 +35,10 @@ artwork_special_fields = {
     'contributors': get_contributor_ids
 }
 
-artist_special_fields = {
-    # TODO birth and death details
-}
+artist_special_fields = {}
 
 artist_fields = [
-    'birthYear', # TODO cast to date
+    'birthYear',
     'date',
     'id',
     'fc',
@@ -137,14 +133,10 @@ def process_category(out_fname, in_filenames, fields, special_fields, node_type)
                     if artwork_id:
                         artwork_edge = 'MATCH (s:Subject), (a:Artwork) WHERE s.id = {} AND a.id = {} CREATE (s)-[r:SUBJ_OF_ARTWORK]->(a);\n'.format(s, artwork_id)
                         subjects_edges_out.write(artwork_edge)
-                    # parent_edge = 'CREATE (subject_{}:Subject)-[r:SUBJ_PARENT_OF_SUBJ]->(subject_{}:Subject);\n'.format(parent, s)
-                    # artwork_edge = 'CREATE (subject_{}:Subject)-[r:SUBJ_OF_ARTWORK]->(artwork_{}:Artwork);\n'.format(s, artwork_id)
 
 def main():
-    artwork_in_filenames = ['./tate-collection/artworks/n/009/n00926-2946.json', './tate-collection/artworks/n/027/n02738-1578.json']
-    artist_in_filenames = ['./tate-collection/artists/b/brown-sir-arnesby-821.json', './tate-collection/artists/c/crome-john-126.json']
-    # artwork_in_filenames = get_files('./tate-collection/artworks/', 'Artwork')
-    # artist_in_filenames = get_files('./tate-collection/artists/', 'Artist')
+    artwork_in_filenames = get_files('./tate-collection/artworks/', 'Artwork')
+    artist_in_filenames = get_files('./tate-collection/artists/', 'Artist')
 
     process_category(artwork_out_filename, artwork_in_filenames, artwork_fields, artwork_special_fields, 'Artwork')
     process_category(artist_out_filename, artist_in_filenames, artist_fields, artist_special_fields, 'Artist')
@@ -156,4 +148,3 @@ def main():
                 for line in infile:
                     total_out.write(line)
 main()
-
