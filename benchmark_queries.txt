@@ -1,0 +1,28 @@
+# Count all artworks
+
+SELECT COUNT(*) FROM artworks;
+3 ms
+
+MATCH (n:Artwork) RETURN count(n) as count;
+4 ms
+
+# Count all occurrences of subjects in artworks
+
+SELECT COUNT(artworks.id) FROM artworks INNER JOIN subjects ON artworks.id = subjects.artwork_id;
+8 ms
+
+MATCH subj=()-[r:SUBJ_OF_ARTWORK]->() RETURN COUNT(subj);
+35 ms
+
+# Count all ancestor-descendent subject pairs
+
+WITH RECURSIVE ancestor_subjects AS (
+    SELECT parent_id AS anc FROM subjects
+    UNION ALL
+    SELECT s.parent_id FROM subjects s, ancestor_subjects a WHERE s.id = a.anc
+)
+SELECT COUNT(*) from ancestor_subjects;
+64 ms
+
+MATCH rel=()-[r:SUBJ_PARENT_OF_SUBJ*]->() RETURN COUNT(rel);
+91 ms
