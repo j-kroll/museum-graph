@@ -55,6 +55,7 @@ artist_artwork_out_filename = 'create_artist_artwork_edges.txt'
 subjects_out_filename = 'create_subjects.txt'
 subjects_edges_out_filename = 'create_subjects_edges.txt'
 total_out_filename = 'create_entire_graphdb.txt'
+relational_out_filename = 'create_relationaldb.txt'
 
 all_subjects = {}
 
@@ -81,7 +82,7 @@ def recurse_subjects(artwork_id, s, parent_id=None):
             recurse_subjects(artwork_id, child, s_id)
     return
 
-def process_category(out_fname, in_filenames, fields, special_fields, node_type):
+def process_category(out_fname, in_filenames, fields, special_fields, node_type, relational_out):
     edges = ''
     with open(out_fname, 'w') as outfile:
         for n, fname in enumerate(in_filenames):
@@ -110,6 +111,16 @@ def process_category(out_fname, in_filenames, fields, special_fields, node_type)
                 item_str = item_str[:-2]
                 item_str += '});\n'
                 outfile.write(item_str)
+                if node_type == 'Artwork':
+                    artist_id = item['contributors'][0]['id']
+                    title = item['title']
+                    rel_l = 'INSERT INTO artworks (id, artist_id, title) VALUES ({}, {}, "{}");\n'.format(item_id, artist_id, title)
+                elif node_type == 'Artist':
+                    rel_l = 'INSERT INTO artists (id, fc) VALUES ({}, "{}");\n'.format(item_id, item['fc'])
+                else:
+                    print('Invalid node type')
+                    raise Exception
+                relational_out.write(rel_l)
                 if 'subjects' in item:
                     subjects = item['subjects']
                     recurse_subjects(item_id, subjects)
@@ -128,6 +139,8 @@ def process_category(out_fname, in_filenames, fields, special_fields, node_type)
                     parent_str = ', parent: {}'.format(parent) if parent else ''
                     l = 'CREATE (subject_{}:Subject {{ name: "{}"{}{}, id: {} }});\n'.format(s, name, parent_str, artwork_str, s)
                     subjects_out.write(l)
+                    rel_l = 'INSERT INTO subjects (id, name, parent_id, artwork_id) VALUES ({}, "{}", {}, {});\n'.format(s, name, parent, artwork_id)
+                    relational_out.write(rel_l)
                     parent_edge = 'MATCH (p:Subject), (c:Subject) WHERE p.id = {} AND c.id = {} CREATE (p)-[r:SUBJ_PARENT_OF_SUBJ]->(c);\n'.format(parent, s)
                     subjects_edges_out.write(parent_edge)
                     if artwork_id:
@@ -136,15 +149,19 @@ def process_category(out_fname, in_filenames, fields, special_fields, node_type)
 
 def main():
     artwork_in_filenames = get_files('./tate-collection/artworks/', 'Artwork')
-    artist_in_filenames = get_files('./tate-collection/artists/', 'Artist')
+    artist_in_filenames = get_files('./tate-collection/artists/', 'Artist')o
 
-    process_category(artwork_out_filename, artwork_in_filenames, artwork_fields, artwork_special_fields, 'Artwork')
-    process_category(artist_out_filename, artist_in_filenames, artist_fields, artist_special_fields, 'Artist')
+    relational_out = open(relational_out_filename, 'w')
+
+    process_category(artwork_out_filename, artwork_in_filenames, artwork_fields, artwork_special_fields, 'Artwork', relational_out)
+    process_category(artist_out_filename, artist_in_filenames, artist_fields, artist_special_fields, 'Artist', relational_out)
 
     concat_filenames = [artwork_out_filename, artist_out_filename, subjects_out_filename, artist_artwork_out_filename, subjects_edges_out_filename]
+
     with open(total_out_filename, 'w') as total_out:
         for fname in concat_filenames:
             with open(fname, 'r') as infile:
                 for line in infile:
                     total_out.write(line)
+
 main()
